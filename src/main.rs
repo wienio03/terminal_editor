@@ -1,5 +1,12 @@
 use std::io::{stdin, Read};
 use termios::*;
+use libc::{iscntrl, atexit};
+
+
+fn reset_flags(){
+
+
+}
 
 fn change_flags(){
     let fd = 0;
@@ -8,6 +15,7 @@ fn change_flags(){
         Err(why) => panic!("Error while putting terminal in raw mode: {}", why),
         Ok(_) => {}
     }
+
 
     termios.c_lflag &= !(// local flags
         ECHO // disables showing inputing characters on screen 
@@ -24,6 +32,9 @@ fn change_flags(){
     termios.c_oflag &= !(// output flags
         OPOST // disables
     );
+
+    termios.c_cc[VMIN] = 0; // minimum amount of bytes before read can return
+    termios.c_cc[VTIME] = 1; // amount of time without input after which read returns
 
     match tcsetattr(fd, TCSAFLUSH, &mut termios){
         Err(why) => panic!("Error while putting terminal in raw mode: {}", why),
@@ -43,6 +54,11 @@ fn main(){
             Ok(_) => {c = buff[0] as char},
             Err(_) => break
         }
+        if c == 'q'{
+            break;
+        }
         print!("{}", c);
     }
 }
+
+//todo disabling raw mode on exit, add error handling if necessary, for now no way to quit
