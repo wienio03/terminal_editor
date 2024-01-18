@@ -1,8 +1,12 @@
+//kestes chujem
 use std::io::{self, Read};
 use termios::*;
-//use libc::{iscntrl, atexit};
+use libc::{write, iscntrl, atexit};
 //use std::rc::Rc;
 
+const fn ctrl_key(c : u8) -> char{
+    return (c & 0x1f) as char;
+}
 
 fn reset_flags(mut orig_term : Termios){
     match tcsetattr(0, TCSAFLUSH, &mut orig_term) {
@@ -53,17 +57,22 @@ fn set_flags(){
 
 }
 
+fn clear_terminal(){
+    
+}
+
 fn main(){
     const STDIN: i32 = 0;
     let mut c : char;
     let orig_termios: Termios = Termios::from_fd(STDIN).unwrap();
+    clear_terminal();
     set_flags();
     loop {
         match io::stdin().lock().bytes().next() {
-            //added error handling in loop 
+            //added error handling in loop char
             Some(Ok(byte)) => {
                 c = byte as char;
-                if c == 'q' {
+                if c == ctrl_key(byte) {
                     break;
                 }
                 print!("{}", c);
