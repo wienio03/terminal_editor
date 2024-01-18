@@ -1,14 +1,16 @@
 use std::io::{stdin, Read};
 use termios::*;
 use libc::{iscntrl, atexit};
+use std::rc::Rc;
 
+static ORIGINAL_FLAGS : Rc<Termios> = Rc::new(std::mem::size_of::<Termios>);
 
 fn reset_flags(){
 
 
 }
 
-fn change_flags(){
+fn set_flags(){
     let fd = 0;
     let mut termios = Termios::from_fd(fd).unwrap();
     match tcgetattr(fd, &mut termios){
@@ -47,7 +49,7 @@ fn main(){
     let mut c : char;
     let mut buff : [u8; 1] = [0];
 
-    change_flags();
+    set_flags();
 
     loop {
         match stdin().read_exact(&mut buff){
@@ -60,5 +62,3 @@ fn main(){
         print!("{}", c);
     }
 }
-
-//todo disabling raw mode on exit, add error handling if necessary, for now no way to quit
