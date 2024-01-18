@@ -1,20 +1,25 @@
-use std::io::{stdin, Read};
+use std::io::{self, Read};
 use termios::*;
-use libc::{iscntrl, atexit};
-use std::rc::Rc;
-
-static ORIGINAL_FLAGS : Rc<Termios> = Rc::new(std::mem::size_of::<Termios>);
-
-fn reset_flags(){
+//use libc::{iscntrl, atexit};
+//use std::rc::Rc;
 
 
+fn reset_flags(mut orig_term : Termios){
+    match tcsetattr(0, TCSAFLUSH, &mut orig_term) {
+        Err(e) => panic!("Error while reseting the flags : {}", e),
+        Ok(_) => {}
+    }
 }
 
 fn set_flags(){
     let fd = 0;
+    let orig_termios = Termios::from_fd(fd).unwrap();
     let mut termios = Termios::from_fd(fd).unwrap();
     match tcgetattr(fd, &mut termios){
-        Err(why) => panic!("Error while putting terminal in raw mode: {}", why),
+        Err(why) => {
+            reset_flags(orig_termios);
+            panic!("Error while putting terminal in raw mode: {}", why);
+        }
         Ok(_) => {}
     }
 
@@ -39,26 +44,36 @@ fn set_flags(){
     termios.c_cc[VTIME] = 1; // amount of time without input after which read returns
 
     match tcsetattr(fd, TCSAFLUSH, &mut termios){
-        Err(why) => panic!("Error while putting terminal in raw mode: {}", why),
+        Err(why) => {
+            reset_flags(orig_termios);
+            panic!("Error while putting terminal in raw mode: {}", why);
+        }
         Ok(_) => {}
     }
 
 }
 
 fn main(){
+    const STDIN: i32 = 0;
     let mut c : char;
-    let mut buff : [u8; 1] = [0];
-
+    let orig_termios: Termios = Termios::from_fd(STDIN).unwrap();
     set_flags();
-
     loop {
-        match stdin().read_exact(&mut buff){
-            Ok(_) => {c = buff[0] as char},
-            Err(_) => break
+        match io::stdin().lock().bytes().next() {
+            //added error handling in loop 
+            Some(Ok(byte)) => {
+                c = byte as char;
+                if c == 'q' {
+                    break;
+                }
+                print!("{}", c);
+            },
+            Some(Err(e)) => {
+
+                panic!("Error when executing reading loop: {}", e);
+            }
+            None => {}
         }
-        if c == 'q'{
-            break;
-        }
-        print!("{}", c);
     }
+    reset_flags(orig_termios);
 }
